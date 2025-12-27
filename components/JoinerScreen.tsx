@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { db } from '../App';
+import { db } from '../App.tsx';
 import { ref, set, push, onChildAdded, get } from 'firebase/database';
 import { X, Camera, Volume2, RefreshCw, AlertCircle, Headphones, Wifi, Keyboard, ChevronRight } from 'lucide-react';
-import AudioVisualizer from './AudioVisualizer';
+import AudioVisualizer from './AudioVisualizer.tsx';
 
 interface JoinerScreenProps {
   onDisconnect: () => void;
@@ -25,21 +25,18 @@ const JoinerScreen: React.FC<JoinerScreenProps> = ({ onDisconnect }) => {
     if (step === 'SCANNING') {
       const startScanner = async () => {
         try {
-          // Delay initialization slightly to ensure element is rendered
           setTimeout(() => {
             const html5QrcodeScanner = new (window as any).Html5QrcodeScanner(
               "reader", 
               { fps: 10, qrbox: {width: 250, height: 250} },
-              /* verbose= */ false
+              false
             );
             
             html5QrcodeScanner.render((decodedText: string) => {
               html5QrcodeScanner.clear();
               setRoomId(decodedText);
               connectToRoom(decodedText);
-            }, (error: any) => {
-              // Silently handle scan errors (common during motion)
-            });
+            }, (error: any) => {});
             
             scannerRef.current = html5QrcodeScanner;
           }, 100);
@@ -80,16 +77,12 @@ const JoinerScreen: React.FC<JoinerScreenProps> = ({ onDisconnect }) => {
 
       pcRef.current = peerConnection;
 
-      // Handle Incoming Track
       peerConnection.ontrack = (event) => {
         const incomingStream = event.streams[0];
         setStream(incomingStream);
         if (audioRef.current) {
           audioRef.current.srcObject = incomingStream;
-          // Most browsers require user interaction to play audio
-          audioRef.current.play().catch(e => {
-            console.log("Auto-play blocked. User interaction needed.");
-          });
+          audioRef.current.play().catch(e => console.log("Auto-play blocked"));
         }
         setStep('LISTENING');
       };
@@ -101,20 +94,14 @@ const JoinerScreen: React.FC<JoinerScreenProps> = ({ onDisconnect }) => {
         }
       };
 
-      // Set Remote Offer
       await peerConnection.setRemoteDescription(new RTCSessionDescription(roomData.offer));
-
-      // Create Answer
       const answer = await peerConnection.createAnswer();
       await peerConnection.setLocalDescription(answer);
-
-      // Save Answer
       await set(ref(db, `rooms/${cleanId}/answer`), {
         type: answer.type,
         sdp: answer.sdp
       });
 
-      // Listen for Creator ICE Candidates
       const creatorIceRef = ref(db, `rooms/${cleanId}/creatorIceCandidates`);
       onChildAdded(creatorIceRef, (snapshot) => {
         const candidate = snapshot.val();
@@ -123,7 +110,6 @@ const JoinerScreen: React.FC<JoinerScreenProps> = ({ onDisconnect }) => {
         }
       });
 
-      // Track Latency (Estimator)
       const start = Date.now();
       peerConnection.onconnectionstatechange = () => {
         if (peerConnection.connectionState === 'connected') {
@@ -140,11 +126,7 @@ const JoinerScreen: React.FC<JoinerScreenProps> = ({ onDisconnect }) => {
 
   const forcePlay = () => {
     if (audioRef.current) {
-      audioRef.current.play().then(() => {
-        console.log("Playback started manually.");
-      }).catch(e => {
-        console.error("Playback failed:", e);
-      });
+      audioRef.current.play().catch(e => console.error("Playback failed:", e));
     }
   };
 
@@ -156,7 +138,6 @@ const JoinerScreen: React.FC<JoinerScreenProps> = ({ onDisconnect }) => {
   return (
     <div className="w-full max-w-lg animate-in fade-in slide-in-from-bottom-8 duration-500">
       <audio ref={audioRef} autoPlay playsInline className="hidden" />
-      
       <div className="glass-panel rounded-[3rem] p-8 relative">
         <div className="flex justify-between items-center mb-10">
           <div className="flex items-center space-x-3">
@@ -171,14 +152,10 @@ const JoinerScreen: React.FC<JoinerScreenProps> = ({ onDisconnect }) => {
         {step === 'SCANNING' && (
           <div className="flex flex-col items-center">
             <div id="reader" className="w-full max-w-[280px] overflow-hidden rounded-[2rem] border-2 border-dashed border-slate-700 bg-slate-900/50 mb-8 aspect-square relative">
-               {/* Custom scanner overlay */}
                <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-40">
                   <Camera className="w-16 h-16 text-slate-600" />
                </div>
             </div>
-            <p className="text-slate-400 text-center text-sm font-light mb-8 max-w-[200px]">
-              Point your camera at the QR code on the desktop screen.
-            </p>
             <button 
               onClick={() => {
                 if(scannerRef.current) scannerRef.current.clear();
@@ -216,13 +193,6 @@ const JoinerScreen: React.FC<JoinerScreenProps> = ({ onDisconnect }) => {
                 </button>
               </form>
             </div>
-            <button 
-              onClick={() => setStep('SCANNING')}
-              className="mt-10 text-slate-500 hover:text-slate-400 text-sm font-medium flex items-center space-x-2 transition-colors"
-            >
-              <Camera className="w-4 h-4" />
-              <span>Back to QR Scan</span>
-            </button>
           </div>
         )}
 
@@ -230,7 +200,6 @@ const JoinerScreen: React.FC<JoinerScreenProps> = ({ onDisconnect }) => {
           <div className="py-20 flex flex-col items-center">
             <div className="w-20 h-20 rounded-full border-4 border-t-blue-500 border-r-transparent border-b-blue-500/30 border-l-transparent animate-spin mb-8"></div>
             <h3 className="text-xl font-bold mb-2">Establishing Link...</h3>
-            <p className="text-slate-400 text-sm tracking-widest font-mono">ROOM: {roomId}</p>
           </div>
         )}
 
@@ -257,21 +226,7 @@ const JoinerScreen: React.FC<JoinerScreenProps> = ({ onDisconnect }) => {
               >
                 <Volume2 className="w-6 h-6 mr-2" /> Start Listening
               </button>
-              
-              <div className="bg-slate-800/40 p-5 rounded-[2rem] border border-white/5 text-center">
-                <p className="text-[10px] uppercase font-bold text-slate-500 mb-1 tracking-widest">Latency</p>
-                <p className="text-lg font-bold text-slate-200">{latency > 0 ? `${latency}ms` : '...'}</p>
-              </div>
-
-              <div className="bg-slate-800/40 p-5 rounded-[2rem] border border-white/5 text-center">
-                <p className="text-[10px] uppercase font-bold text-slate-500 mb-1 tracking-widest">Protocol</p>
-                <p className="text-lg font-bold text-slate-200">WebRTC</p>
-              </div>
             </div>
-
-            <p className="text-center text-xs text-slate-600 italic">
-              Keep this screen active for uninterrupted audio playback.
-            </p>
           </div>
         )}
 
@@ -282,20 +237,7 @@ const JoinerScreen: React.FC<JoinerScreenProps> = ({ onDisconnect }) => {
             </div>
             <h3 className="text-xl font-bold text-slate-200 mb-4">Connection Failed</h3>
             <p className="text-slate-400 text-sm mb-8 px-6">{errorMessage}</p>
-            <div className="flex flex-col space-y-3 items-center">
-              <button 
-                onClick={() => setStep('SCANNING')}
-                className="w-full max-w-[240px] px-8 py-3 bg-slate-800 hover:bg-slate-700 text-slate-100 rounded-2xl font-bold flex items-center justify-center transition-all"
-              >
-                <RefreshCw className="w-5 h-5 mr-2" /> Retry Scan
-              </button>
-              <button 
-                onClick={() => setStep('MANUAL')}
-                className="text-slate-500 hover:text-slate-400 text-sm font-medium"
-              >
-                Try Manual Entry
-              </button>
-            </div>
+            <button onClick={() => setStep('SCANNING')} className="px-8 py-3 bg-slate-800 text-slate-100 rounded-2xl font-bold">Retry</button>
           </div>
         )}
       </div>

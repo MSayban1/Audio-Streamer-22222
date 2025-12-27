@@ -10,10 +10,10 @@
   },
   "dependencies": {
     "react": "^19.2.3",
-    "firebase": "^12.7.0",
-    "lucide-react": "^0.562.0",
     "react-dom": "^19.2.3",
-    "qrcode.react": "^4.2.0"
+    "lucide-react": "0.460.0",
+    "qrcode.react": "4.1.0",
+    "firebase": "^12.7.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

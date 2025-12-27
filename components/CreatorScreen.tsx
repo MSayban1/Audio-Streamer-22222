@@ -1,11 +1,11 @@
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { db } from '../App';
-import { ref, onValue, set, update, push, onChildAdded } from 'firebase/database';
-import { Activity, X, MicOff, Mic, Settings, AlertCircle, Loader2 } from 'lucide-react';
-import AudioVisualizer from './AudioVisualizer';
-import { AudioQuality } from '../types';
+import { db } from '../App.tsx';
+import { ref, onValue, set, push, onChildAdded } from 'firebase/database';
+import { X, MicOff, Mic, Settings, AlertCircle } from 'lucide-react';
+import AudioVisualizer from './AudioVisualizer.tsx';
+import { AudioQuality } from '../types.ts';
 
 interface CreatorScreenProps {
   roomId: string | null;
@@ -21,9 +21,6 @@ const CreatorScreen: React.FC<CreatorScreenProps> = ({ roomId, setRoomId, onDisc
   const [quality, setQuality] = useState<AudioQuality>('high');
   const [errorMessage, setErrorMessage] = useState('');
 
-  const candidatesRef = useRef<RTCIceCandidateInit[]>([]);
-
-  // Generate a random Room ID
   useEffect(() => {
     if (!roomId) {
       const newId = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -34,9 +31,8 @@ const CreatorScreen: React.FC<CreatorScreenProps> = ({ roomId, setRoomId, onDisc
   const startStreaming = async () => {
     try {
       setStatus('IDLE');
-      // Request system audio (getDisplayMedia is best for desktop system audio)
       const mediaStream = await navigator.mediaDevices.getDisplayMedia({
-        video: true, // Chromium requires video: true to show "Share system audio"
+        video: true,
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
@@ -44,19 +40,16 @@ const CreatorScreen: React.FC<CreatorScreenProps> = ({ roomId, setRoomId, onDisc
         },
       });
 
-      // Filter to keep only audio
       const audioTrack = mediaStream.getAudioTracks()[0];
       if (!audioTrack) {
         throw new Error("No audio track selected. Please check 'Share system audio' in the selector.");
       }
       
-      // Stop the video track immediately as we only want audio
       mediaStream.getVideoTracks().forEach(t => t.stop());
       
       const filteredStream = new MediaStream([audioTrack]);
       setStream(filteredStream);
       
-      // Initialize WebRTC
       const peerConnection = new RTCPeerConnection({
         iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
       });
@@ -77,11 +70,9 @@ const CreatorScreen: React.FC<CreatorScreenProps> = ({ roomId, setRoomId, onDisc
         peerConnection.addTrack(track, filteredStream);
       });
 
-      // Create Offer
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
 
-      // Save to Firebase
       if (roomId) {
         await set(ref(db, `rooms/${roomId}`), {
           offer: { type: offer.type, sdp: offer.sdp },
@@ -92,7 +83,6 @@ const CreatorScreen: React.FC<CreatorScreenProps> = ({ roomId, setRoomId, onDisc
 
       setPc(peerConnection);
 
-      // Listen for Answer
       const answerRef = ref(db, `rooms/${roomId}/answer`);
       onValue(answerRef, async (snapshot) => {
         const data = snapshot.val();
@@ -101,7 +91,6 @@ const CreatorScreen: React.FC<CreatorScreenProps> = ({ roomId, setRoomId, onDisc
         }
       });
 
-      // Listen for Joiner ICE Candidates
       const joinerIceRef = ref(db, `rooms/${roomId}/joinerIceCandidates`);
       onChildAdded(joinerIceRef, (snapshot) => {
         const candidate = snapshot.val();
@@ -127,7 +116,6 @@ const CreatorScreen: React.FC<CreatorScreenProps> = ({ roomId, setRoomId, onDisc
   return (
     <div className="w-full max-w-xl animate-in fade-in slide-in-from-bottom-8 duration-500">
       <div className="glass-panel rounded-[2.5rem] p-8 relative overflow-hidden">
-        {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center space-x-3">
             <div className={`w-3 h-3 rounded-full ${status === 'CONNECTED' ? 'bg-green-500 shadow-[0_0_10px_#22c55e]' : 'bg-yellow-500 animate-pulse'}`}></div>
@@ -159,7 +147,6 @@ const CreatorScreen: React.FC<CreatorScreenProps> = ({ roomId, setRoomId, onDisc
           </div>
         ) : (
           <div className="flex flex-col items-center">
-            {/* QR Code Section */}
             {status === 'WAITING' && (
               <div className="bg-white p-6 rounded-3xl mb-8 animate-in zoom-in duration-500 shadow-2xl">
                 <QRCodeSVG value={roomId || ''} size={200} level="H" />
@@ -170,7 +157,6 @@ const CreatorScreen: React.FC<CreatorScreenProps> = ({ roomId, setRoomId, onDisc
               </div>
             )}
 
-            {/* Visualizer and Controls */}
             <div className="w-full space-y-8">
               <div className="h-24 bg-slate-900/50 rounded-2xl border border-white/5 flex items-center justify-center overflow-hidden">
                 {stream ? <AudioVisualizer stream={stream} /> : <div className="text-slate-600 text-sm italic">Initializing Visualizer...</div>}
@@ -197,11 +183,6 @@ const CreatorScreen: React.FC<CreatorScreenProps> = ({ roomId, setRoomId, onDisc
                     <option value="high">HD Audio</option>
                   </select>
                 </div>
-              </div>
-              
-              <div className="flex items-center justify-center space-x-2 text-slate-500">
-                <Activity className="w-4 h-4" />
-                <span className="text-xs font-medium">P2P Encryption Active</span>
               </div>
             </div>
           </div>

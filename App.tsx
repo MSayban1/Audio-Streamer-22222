@@ -1,13 +1,12 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
-import { AppMode } from './types';
-import WelcomeScreen from './components/WelcomeScreen';
-import CreatorScreen from './components/CreatorScreen';
-import JoinerScreen from './components/JoinerScreen';
-import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, remove } from 'firebase/database';
+import { AppMode } from './types.ts';
+import WelcomeScreen from './components/WelcomeScreen.tsx';
+import CreatorScreen from './components/CreatorScreen.tsx';
+import JoinerScreen from './components/JoinerScreen.tsx';
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { getDatabase, ref, remove, Database } from 'firebase/database';
 
-// Firebase configuration provided by the user
+// Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyAQbZym8Tz1kfDAQGj-n7L0RrQlF4nHsyw",
   authDomain: "audio-51224.firebaseapp.com",
@@ -18,9 +17,12 @@ const firebaseConfig = {
   appId: "1:344855155748:web:261638d31c9b4a8960f4b1"
 };
 
-// Initialize Firebase once
-const app = initializeApp(firebaseConfig);
-export const db = getDatabase(app);
+// Initialize Firebase App strictly as a singleton
+const apps = getApps();
+const app: FirebaseApp = apps.length === 0 ? initializeApp(firebaseConfig) : getApp();
+
+// Initialize Database directly from the app instance
+export const db: Database = getDatabase(app);
 
 const App: React.FC = () => {
   const [mode, setMode] = useState<AppMode>(AppMode.IDLE);
@@ -29,14 +31,17 @@ const App: React.FC = () => {
   const resetApp = useCallback(async () => {
     if (roomId) {
       const roomRef = ref(db, `rooms/${roomId}`);
-      await remove(roomRef);
+      try {
+        await remove(roomRef);
+      } catch (e) {
+        console.error("Cleanup error:", e);
+      }
     }
     setMode(AppMode.IDLE);
     setRoomId(null);
   }, [roomId]);
 
   useEffect(() => {
-    // Handle global errors or cleanups
     const handleUnload = () => {
       if (roomId) {
         const roomRef = ref(db, `rooms/${roomId}`);
@@ -70,7 +75,6 @@ const App: React.FC = () => {
         />
       )}
       
-      {/* Background Decor */}
       <div className="fixed top-0 left-0 w-full h-full pointer-events-none -z-10 overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900/20 blur-[120px] rounded-full"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/20 blur-[120px] rounded-full"></div>
