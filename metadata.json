@@ -1,0 +1,9 @@
+{
+  "name": "AudioStream QR",
+  "description": "A futuristic WebRTC tool to stream desktop system audio to mobile devices using QR code pairing and Firebase signaling.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "display-capture"
+  ]
+}
